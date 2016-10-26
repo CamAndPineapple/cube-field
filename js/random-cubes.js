@@ -132,21 +132,19 @@ let controls = new function() {
 		let multiple = 1;
 		while (multiple < 1.05) {
 
-			scene.traverse(obj => {
-			if (obj instanceof THREE.Mesh && obj != plane ) {
-			if (lastWidthIncr < multiple) {
-			obj.position.x *= multiple;
-			obj.position.y *= multiple*1.01;
-			obj.position.z *= multiple;
-			} else {
-			obj.position.x /= multiple;
-			obj.position.y /= multiple*1.01;
-			obj.position.z /= multiple;
-			}
-			} 
-			});
-
-
+            scene.traverse(obj => {
+                if (obj instanceof THREE.Mesh && obj != plane) {
+                    if (lastWidthIncr < multiple) {
+                        obj.position.x *= multiple;
+                        obj.position.y *= multiple * 1.01;
+                        obj.position.z *= multiple;
+                    } else {
+                        obj.position.x /= multiple;
+                        obj.position.y /= multiple * 1.01;
+                        obj.position.z /= multiple;
+                    }
+                }
+            });
 			multiple += 0.001;
 		}
 	}
