@@ -27,7 +27,7 @@ class Particle {
 		this.w = width || Math.random() * 10;
 		this.h = height || Math.random() * 10;
 		this.d = depth || Math.random() * 10;
-		this.color = 0xffffff;
+		this.color = 0xffffff * Math.random();
 	}
 
 	setMaxPosX(maxWidth) {
@@ -35,7 +35,7 @@ class Particle {
 	}
 
 	setMaxPosY(maxHeight) {
-		return Math.random() * maxHeight;
+		return maxHeight;
 	}
 
 	setMaxPosZ(maxDepth) {
@@ -54,23 +54,24 @@ let ambiColor = "#0c0c0c";
 let ambientLight = new THREE.AmbientLight(ambiColor);
 scene.add(ambientLight);
 
-let topLeftPointLight = new THREE.PointLight(0x0033ff, 3, 200);   
+let topLeftPointLight = new THREE.PointLight(0x0033ff, 100, 100);   
 topLeftPointLight.position.set(-PLANE_WIDTH/4, 5, -PLANE_HEIGHT/4);
 scene.add(topLeftPointLight);
 
-let bottomLeftPointLight= new THREE.PointLight(0xFF0000, 3, 200); 
+let bottomLeftPointLight= new THREE.PointLight(0xFF0000, 100, 100); 
 bottomLeftPointLight.position.set(-PLANE_WIDTH/4, 5, PLANE_HEIGHT/4);
 scene.add(bottomLeftPointLight);
 
-let topRightPointLight = new THREE.PointLight(0xFFFF00, 3, 200); 
+let topRightPointLight = new THREE.PointLight(0xFFFF00, 100, 100); 
 topRightPointLight.position.set(PLANE_WIDTH/4, 5, -PLANE_HEIGHT/4);
 scene.add(topRightPointLight);
 
-let bottomRightPointLight = new THREE.PointLight(0xff00ff, 3, 200); 
+let bottomRightPointLight = new THREE.PointLight(0xff00ff, 100, 100); 
 bottomRightPointLight.position.set(PLANE_WIDTH/4, 5, PLANE_HEIGHT/4);
 scene.add(bottomRightPointLight);
 
-let spotLight = new THREE.SpotLight(0xffffff);
+let spotLightColor = "#ffffff";
+let spotLight = new THREE.SpotLight(spotLightColor);
 spotLight.position.set(-80, 120, -10);
 spotLight.castShadow = true;
 scene.add(spotLight);
@@ -95,11 +96,12 @@ const cameraHelper = new THREE.CameraHelper(spotLight.shadow.camera);
 // CONTROLS ====================================================================
 
 let controls = new function() {
-	this.cubeRotSpd = 0.01;
-	this.expand = 1;
+	this.cubeRotSpd = 0.00;
+	this.expand = 0;
 	this.ambientLightON = true;
-	this.spotLightON = true;
+	this.spotLightON = false;
 	this.ambientColor = ambiColor;
+	this.spotLightColor = spotLightColor;
 	this.particleCount = cubes.length;
 	this.sinWaveFreq = 0.0;
 	this.showAxes = false;
@@ -118,7 +120,7 @@ let controls = new function() {
 			cube.castShadow = true;
 			cube.name = `cube-${scene.children.length - 3}`;
 			cube.position.x = particle.setMaxPosX(PLANE_WIDTH); 
-			cube.position.y = particle.setMaxPosY(100);
+			cube.position.y = particle.setMaxPosY(particle.h/2);
 			cube.position.z = particle.setMaxPosZ(PLANE_HEIGHT);
 			cubes.push(cube);
 			scene.add(cube);
@@ -159,7 +161,7 @@ cubesFolder.add(controls, 'addCubes');
 cubesFolder.add(controls, 'cubeRotSpd', 0, 0.5);
 cubesFolder.add(controls, 'sinWaveFreq', 0.00, 0.05);
 cubesFolder.add(controls, 'exploding').listen();
-cubesFolder.add(controls, 'expand').min(1).step(0.001).onChange(val => {
+cubesFolder.add(controls, 'expand', 0.00, 0.05).onChange(val => {
 	scene.traverse(obj => {
        if (obj instanceof THREE.Mesh && obj != plane ) {
             if (this.lastIncrement < val) {
@@ -178,9 +180,10 @@ cubesFolder.add(controls, 'expand').min(1).step(0.001).onChange(val => {
 cubesFolder.open();
 
 let lightsFolder = gui.addFolder('Lights');
-lightsFolder.addColor(controls, 'ambientColor').onChange(e => ambientLight.color = new THREE.Color(e));
 lightsFolder.add(controls, 'ambientLightON').listen();
 lightsFolder.add(controls, 'spotLightON').listen();
+lightsFolder.addColor(controls, 'ambientColor').onChange(e => ambientLight.color = new THREE.Color(e));
+lightsFolder.addColor(controls, 'spotLightColor').onChange(e => spotLight.color = new THREE.Color(e));
 lightsFolder.open();
 
 let helpersFolder = gui.addFolder('Helpers');
@@ -202,22 +205,10 @@ window.addEventListener('resize', onResize, false);
 render();
 
 function render(timestamp) {
-	if (controls.exploding) explodeParticles();
-	OrbitControls.autoRotate = (controls.rotateCamera) ? true : false;
-
-	// toggle lights
-	controls.ambientLightON ? scene.add(ambientLight) : scene.remove(ambientLight);
-	controls.spotLightON ? scene.add(spotLight) : scene.remove(spotLight);
-
-	// toggle helpers
-	controls.showAxes ? scene.add(axisHelper) : scene.remove(axisHelper);
-    controls.showPlane ? scene.add(plane) : scene.remove(plane);
-    controls.showSpotLight ? scene.add(cameraHelper) : scene.remove(cameraHelper);
-
-
 	stats.begin();
 	stats.end();
 
+    updateToggles();
 	animate();	
 	OrbitControls.update();
 	renderer.render(scene, camera);
@@ -232,14 +223,31 @@ function initStats() {
     return stats;
 }
 
+function updateToggles() {
+	// toggle explosion 
+	if (controls.exploding) explodeParticles();
+
+	// toggle camera rotate
+	OrbitControls.autoRotate = (controls.rotateCamera) ? true : false;
+
+	// toggle lights
+	controls.ambientLightON ? scene.add(ambientLight) : scene.remove(ambientLight);
+	controls.spotLightON ? scene.add(spotLight) : scene.remove(spotLight);
+
+	// toggle helpers
+	controls.showAxes ? scene.add(axisHelper) : scene.remove(axisHelper);
+    controls.showPlane ? scene.add(plane) : scene.remove(plane);
+    controls.showSpotLight ? scene.add(cameraHelper) : scene.remove(cameraHelper);
+}
+
 function animate() {
-	while (cubes.length < 500) controls.addCubes();
+	while (cubes.length < 1000) controls.addCubes();
     step += controls.sinWaveFreq;
     scene.traverse(obj => {
         if (obj instanceof THREE.Mesh && obj != plane) {
             obj.rotation.x += controls.cubeRotSpd;
             obj.rotation.y += controls.cubeRotSpd;
-            if (controls.sinWaveFreq > 0) obj.position.y += Math.sin(step);
+            if (controls.sinWaveFreq > 0) obj.position.y += Math.random() * 10 * Math.sin(step);
         }
     });
 }
