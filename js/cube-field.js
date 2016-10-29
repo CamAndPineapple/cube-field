@@ -54,21 +54,17 @@ let ambiColor = "#0c0c0c";
 let ambientLight = new THREE.AmbientLight(ambiColor);
 scene.add(ambientLight);
 
-let topLeftPointLight = new THREE.PointLight(0x0033ff, 100, 100);   
-topLeftPointLight.position.set(-PLANE_WIDTH/4, 5, -PLANE_HEIGHT/4);
-scene.add(topLeftPointLight);
+// Create a point light for each quadrant of the plane
+for (let i = 0; i < 4; i++) {
+	const colors = [0x0000ff, 0xFF0000, 0xFFFF00, 0xFF00FF];
+	const posMap = [[-1, -1], [1, -1], [-1, 1],[1, 1]];
+	const posWidth = posMap[i][0] * (PLANE_WIDTH/4);
+	const posHeight = posMap[i][1] * (PLANE_HEIGHT/4);
 
-let bottomLeftPointLight= new THREE.PointLight(0xFF0000, 100, 100); 
-bottomLeftPointLight.position.set(-PLANE_WIDTH/4, 5, PLANE_HEIGHT/4);
-scene.add(bottomLeftPointLight);
-
-let topRightPointLight = new THREE.PointLight(0xFFFF00, 100, 100); 
-topRightPointLight.position.set(PLANE_WIDTH/4, 5, -PLANE_HEIGHT/4);
-scene.add(topRightPointLight);
-
-let bottomRightPointLight = new THREE.PointLight(0xff00ff, 100, 100); 
-bottomRightPointLight.position.set(PLANE_WIDTH/4, 5, PLANE_HEIGHT/4);
-scene.add(bottomRightPointLight);
+	let pointLight = new THREE.PointLight(colors[i], 100, 100);
+	pointLight.position.set(posWidth, 5, posHeight);
+	scene.add(pointLight);
+}
 
 let spotLightColor = "#ffffff";
 let spotLight = new THREE.SpotLight(spotLightColor);
@@ -97,19 +93,21 @@ const cameraHelper = new THREE.CameraHelper(spotLight.shadow.camera);
 
 let controls = new function() {
 	this.cubeRotSpd = 0.00;
-	this.expand = 0;
+	this.expandWidth = 1;
+	this.expandHeight = 1;
 	this.ambientLightON = true;
 	this.spotLightON = false;
 	this.ambientColor = ambiColor;
 	this.spotLightColor = spotLightColor;
 	this.particleCount = cubes.length;
-	this.sinWaveFreq = 0.0;
+	this.sinWaveFreq = 0.025;
 	this.showAxes = false;
 	this.showPlane = true;
 	this.showSpotLight = false;
-	this.rotateCamera = false;
+	this.rotateCamera = true;
 	this.exploding = false;
-	this.lastIncrement = 0;
+	this.lastWidthInc = 0;
+	this.lastHeightInc = 0;
 
 	this.addCubes = function () {	
 		for (let i = 0; i < MAX_PARTICLES; i++) {
@@ -158,25 +156,36 @@ let gui = new dat.GUI;
 
 let cubesFolder = gui.addFolder('Cubes');
 cubesFolder.add(controls, 'addCubes');
+cubesFolder.add(controls, 'particleCount').listen();
 cubesFolder.add(controls, 'cubeRotSpd', 0, 0.5);
 cubesFolder.add(controls, 'sinWaveFreq', 0.00, 0.05);
-cubesFolder.add(controls, 'exploding').listen();
-cubesFolder.add(controls, 'expand', 0.00, 0.05).onChange(val => {
+cubesFolder.add(controls, 'expandWidth').min(1).step(0.01).onChange(val => {
 	scene.traverse(obj => {
        if (obj instanceof THREE.Mesh && obj != plane ) {
-            if (this.lastIncrement < val) {
+            if (this.lastWidthInc < val) {
                 obj.position.x *= val;
-                obj.position.y *= val;
                 obj.position.z *= val;
             } else {
                 obj.position.x /= val;
-                obj.position.y /= val;
                 obj.position.z /= val;
             }
 		} 
 	});
-	this.lastIncrement = val;
+	this.lastWidthInc = val;
 });
+cubesFolder.add(controls, 'expandHeight').min(1).step(0.01).onChange(val => {
+	scene.traverse(obj => {
+       if (obj instanceof THREE.Mesh && obj != plane ) {
+            if (this.lastHeightInc < val) {
+                obj.position.y *= val;
+            } else {
+                obj.position.y /= val;
+            }
+		} 
+	});
+	this.lastHeightInc = val;
+});
+cubesFolder.add(controls, 'exploding').listen();
 cubesFolder.open();
 
 let lightsFolder = gui.addFolder('Lights');
@@ -191,7 +200,6 @@ helpersFolder.add(controls, 'showAxes').listen();
 helpersFolder.add(controls, 'showPlane').listen();
 helpersFolder.add(controls, 'showSpotLight').listen();
 
-gui.add(controls, 'particleCount').listen();
 gui.add(controls, 'rotateCamera').listen();
 gui.add(controls, 'outputObjects');
 gui.add(controls, 'resetCamera');
@@ -247,7 +255,9 @@ function animate() {
         if (obj instanceof THREE.Mesh && obj != plane) {
             obj.rotation.x += controls.cubeRotSpd;
             obj.rotation.y += controls.cubeRotSpd;
-            if (controls.sinWaveFreq > 0) obj.position.y += Math.random() * 10 * Math.sin(step);
+            if (controls.sinWaveFreq > 0) {
+            	obj.position.y += Math.random() * Math.sin(step);
+            }
         }
     });
 }
